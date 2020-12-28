@@ -1,3 +1,4 @@
+from typing import Optional
 from enum import Enum
 from fastapi import FastAPI
 
@@ -10,6 +11,8 @@ class ModelName(str, Enum):
 
 app = FastAPI()
 
+fake_items_db = [{"item_name": "Foo1"}, {"item_name": "Bar2"}, {"item_name": "Baz3"}, {"item_name": "Hay4"}]
+
 
 @app.get("/")
 @app.get("/hello_world")
@@ -18,10 +21,27 @@ async def hello_world():
     return {"message": "Hello World, E!"}
 
 
+@app.get("/items/")
+async def read_item(skip: int = 0, limit: int = 10):
+    """Accepting query parameters"""
+    return fake_items_db[skip : skip + limit]
+
+
 @app.get("/items/{item_id}")
-async def read_item(item_id: int):
-    """Items endpoint for testing path parameters"""
-    return {"item_id": item_id}
+async def read_item(item_id: str, q: Optional[str] = None, short: bool = False):
+    """Items endpoint for testing path parameters with optional query parameters"""
+    item = {"item_id": item_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update(
+            {"description": "This is an amazing item that has a long description"}
+        )
+    else:
+        item.update(
+            {"description": "short description"}
+        )
+    return item
 
 
 @app.get("/users/me")
@@ -52,3 +72,16 @@ async def get_model(model_name: ModelName):
 async def read_file(file_path: str):
     """Path parameters containing paths"""
     return {"file_path": file_path}
+
+
+@app.get("/users_multi/{user_id}/items/{item_id}")
+async def read_user_item(user_id: int, item_id: str, q: Optional[str] = None, short: bool = False):
+    """Multiple path and query parameters"""
+    item = {"item_id": item_id, "owner_id": user_id}
+    if q:
+        item.update({"q": q})
+    if not short:
+        item.update(
+            {"description": "This is an amazing item that has a long description"}
+        )
+    return item
