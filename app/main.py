@@ -1,9 +1,54 @@
+from enum import Enum
 from fastapi import FastAPI
+
+
+class ModelName(str, Enum):
+    alexnet = "alexnet"
+    resnet = "resnet"
+    lenet = "lenet"
+
 
 app = FastAPI()
 
 
 @app.get("/")
-@app.get("/helloworld")
-async def helloworld():
+@app.get("/hello_world")
+async def hello_world():
+    """Hello world endpoint for testing if FastAPI works properly"""
     return {"message": "Hello World, E!"}
+
+
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    """Items endpoint for testing path parameters"""
+    return {"item_id": item_id}
+
+
+@app.get("/users/me")
+async def read_user_me():
+    """Path order matters. '/users/me' should come first and '/users/{user_id}' can come only after that"""
+    return {"user_id": "the current user"}
+
+
+@app.get("/users/{user_id}")
+async def read_user(user_id: str):
+    """Path order matters. '/users/me' should come first and '/users/{user_id}' can come only after that"""
+    return {"user_id": user_id}
+
+
+@app.get("/models/{model_name}")
+async def get_model(model_name: ModelName):
+    """Path with predefined values"""
+    if model_name == ModelName.alexnet:
+        return {"model_name": model_name, "message": "Deep Learning FTW!"}
+
+    if model_name.value == "lenet":
+        return {"model_name": model_name, "message": "LeCNN all the images"}
+
+    return {"model_name": model_name, "message": "Have some residuals"}
+
+
+@app.get("/files/{file_path:path}")
+async def read_file(file_path: str):
+    """Path parameters containing paths"""
+    return {"file_path": file_path}
