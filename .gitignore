@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ignore settings for various IDEs.
+.idea/
+.project/
+.pydevproject/
+.vscode/
+nbproject/
+*.code-workspace
+
+# Configuration and secrets
+/.env
