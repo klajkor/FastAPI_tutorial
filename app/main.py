@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import List, Optional
 from enum import Enum
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel
 
 
@@ -112,3 +112,77 @@ async def create_item(item_id: int, item: Item, q: Optional[str] = None):
     if q:
         result.update({"q": q})
     return result
+
+#
+# Query Parameters and String Validations
+#
+
+
+@app.get("/itemsv2/")
+# Default value and regular expressions:
+# async def read_items(q: Optional[str] = Query("fixedquery", min_length=3, max_length=50, regex="^fixedquery$")):
+# No default value, but 'q' is a required parameter:
+async def read_items(q: Optional[str] = Query(..., min_length=3, max_length=50)):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Query parameter list / multiple values
+@app.get("/itemsv3/")
+async def read_items(q: Optional[List[str]] = Query(None)):
+    query_items = {"q": q}
+    return query_items
+
+
+# Query parameter list / multiple values with defaults
+@app.get("/itemsv4/")
+async def read_items(q: List[str] = Query(["foo", "bar"])):
+    query_items = {"q": q}
+    return query_items
+
+
+# Declare more metadata
+@app.get("/itemsv5/")
+async def read_items(
+    q: Optional[str] = Query(
+        None,
+        title="Query string",
+        description="Query string for the items to search in the database that have a good match",
+        min_length=3,
+    )
+):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Alias parameters
+@app.get("/itemsv6/")
+async def read_items(q: Optional[str] = Query(None, alias="item-query")):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Deprecating parameters
+@app.get("/itemsv7/")
+async def read_items(
+    q: Optional[str] = Query(
+        None,
+        alias="item-query",
+        title="Query string",
+        description="Query string for the items to search in the database that have a good match",
+        min_length=3,
+        max_length=50,
+        regex="^fixedquery$",
+        deprecated=True,
+    )
+):
+    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    if q:
+        results.update({"q": q})
+    return results
