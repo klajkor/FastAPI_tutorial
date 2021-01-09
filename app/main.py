@@ -1,6 +1,6 @@
 from typing import List, Optional
 from enum import Enum
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Path, Body
 from pydantic import BaseModel
 
 
@@ -32,7 +32,7 @@ async def hello_world():
 @app.get("/items/")
 async def read_item(skip: int = 0, limit: int = 10):
     """Accepting query parameters"""
-    return fake_items_db[skip : skip + limit]
+    return fake_items_db[skip: skip + limit]
 
 
 @app.get("/items/{item_id}")
@@ -113,6 +113,7 @@ async def create_item(item_id: int, item: Item, q: Optional[str] = None):
         result.update({"q": q})
     return result
 
+
 #
 # Query Parameters and String Validations
 #
@@ -146,12 +147,12 @@ async def read_items(q: List[str] = Query(["foo", "bar"])):
 # Declare more metadata
 @app.get("/itemsv5/")
 async def read_items(
-    q: Optional[str] = Query(
-        None,
-        title="Query string",
-        description="Query string for the items to search in the database that have a good match",
-        min_length=3,
-    )
+        q: Optional[str] = Query(
+            None,
+            title="Query string",
+            description="Query string for the items to search in the database that have a good match",
+            min_length=3,
+        )
 ):
     results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
     if q:
@@ -171,18 +172,124 @@ async def read_items(q: Optional[str] = Query(None, alias="item-query")):
 # Deprecating parameters
 @app.get("/itemsv7/")
 async def read_items(
-    q: Optional[str] = Query(
-        None,
-        alias="item-query",
-        title="Query string",
-        description="Query string for the items to search in the database that have a good match",
-        min_length=3,
-        max_length=50,
-        regex="^fixedquery$",
-        deprecated=True,
-    )
+        q: Optional[str] = Query(
+            None,
+            alias="item-query",
+            title="Query string",
+            description="Query string for the items to search in the database that have a good match",
+            min_length=3,
+            max_length=50,
+            regex="^fixedquery$",
+            deprecated=True,
+        )
 ):
     results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
     if q:
         results.update({"q": q})
+    return results
+
+
+# Path Parameters and Numeric Validations
+@app.get("/path_items/{item_id}")
+async def read_items(item_id: int = Path(..., title="The ID of the item to get"),
+                     q: Optional[str] = Query(None, alias="item-query"),
+                     ):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Number validations: greater than and less than or equal
+@app.get("/path_items_v1/{item_id}")
+async def read_items(
+    *,
+    item_id: int = Path(..., title="The ID of the item to get", ge=1, le=1000),
+    q: str,
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Number validations: floats, greater than and less than
+@app.get("/path_items_v2/{item_id}")
+async def read_items(
+    *,
+    item_id: int = Path(..., title="The ID of the item to get", ge=0, le=1000),
+    q: str,
+    size: float = Query(..., ge=1.1, le=10.5)
+):
+    results = {"item_id": item_id, "size": size}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Body - Multiple Parameters
+# Mix Path, Query and body parameters
+class BodyItem(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+
+
+@app.put("/body_items/{item_id}")
+async def update_item(
+    *,
+    item_id: int = Path(..., title="The ID of the item to get", ge=0, le=1000),
+    q: Optional[str] = None,
+    item: Optional[BodyItem] = None,
+):
+    results = {"item_id": item_id}
+    if q:
+        results.update({"q": q})
+    if item:
+        results.update({"item": item})
+    return results
+
+
+# Multiple body parameters
+class BodyUser(BaseModel):
+    username: str
+    full_name: Optional[str] = None
+
+
+@app.put("/body_items_v1/{item_id}")
+async def update_item(item_id: int, item: BodyItem, user: BodyUser):
+    results = {"item_id": item_id, "item": item, "user": user}
+    return results
+
+
+# Singular values in body
+@app.put("/body_items_v2/{item_id}")
+async def update_item(
+    item_id: int, item: BodyItem, user: BodyUser, importance: int = Body(...)
+):
+    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
+    return results
+
+
+# Multiple body params and query
+@app.put("/body_items_v3/{item_id}")
+async def update_item(
+    *,
+    item_id: int,
+    item: BodyItem,
+    user: BodyUser,
+    importance: int = Body(..., gt=0),
+    q: Optional[str] = None
+):
+    results = {"item_id": item_id, "item": item, "user": user, "importance": importance}
+    if q:
+        results.update({"q": q})
+    return results
+
+
+# Embed a single body parameter
+@app.put("/body_items_v4/{item_id}")
+async def update_item(item_id: int, item: BodyItem = Body(..., embed=True)):
+    results = {"item_id": item_id, "item": item}
     return results
