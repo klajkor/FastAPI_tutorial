@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Set, Dict
 from enum import Enum
 from fastapi import FastAPI, Query, Path, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class Item(BaseModel):
@@ -293,3 +293,125 @@ async def update_item(
 async def update_item(item_id: int, item: BodyItem = Body(..., embed=True)):
     results = {"item_id": item_id, "item": item}
     return results
+
+
+# Body - Fields
+class FieldItem(BaseModel):
+    name: str
+    description: Optional[str] = Field(
+        None, title="The description of the item", max_length=300
+    )
+    price: float = Field(..., gt=0, description="The price must be greater than zero")
+    tax: Optional[float] = None
+
+
+@app.put("/field_items/{item_id}")
+async def update_item(item_id: int, item: FieldItem = Body(..., embed=True)):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# Body - Nested Models
+# List fields with type parameter
+class NestedItemList(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: List[str] = []
+
+
+@app.put("/nested_items_list/{item_id}")
+async def update_item(item_id: int, item: NestedItemList):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# Set types
+class NestedItemSet(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: Set[str] = set()
+
+
+@app.put("/nested_items_set/{item_id}")
+async def update_item(item_id: int, item: NestedItemSet):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# Nested Models
+class Image(BaseModel):
+    url: str
+    name: str
+
+
+class NestedItemModel(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: Set[str] = []
+    image: Optional[Image] = None
+
+
+@app.put("/nested_items_model/{item_id}")
+async def update_item(item_id: int, item: NestedItemModel):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# Special types and validation
+class ImageSpecial(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class NestedItemSpecial(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: Set[str] = set()
+    image: Optional[ImageSpecial] = None
+
+
+@app.put("/nested_items_special/{item_id}")
+async def update_item(item_id: int, item: NestedItemSpecial):
+    results = {"item_id": item_id, "item": item}
+    return results
+
+
+# Deeply nested models
+class ImageNested(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class ItemNested(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: Set[str] = set()
+    images: Optional[List[ImageNested]] = None
+
+
+class OfferNested(BaseModel):
+    offer_name: str
+    description: Optional[str] = None
+    total_price: float
+    items: List[ItemNested]
+
+
+@app.post("/offers_nested/")
+async def create_offer(offer: OfferNested):
+    return offer
+
+
+# Bodies of arbitrary dicts
+@app.post("/index-weights/")
+async def create_index_weights(weights: Dict[int, float]):
+    return weights
